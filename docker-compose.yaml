@@ -1,0 +1,71 @@
+version: '3'
+
+services:
+  # DATABASE
+  db:
+    container_name: db
+    image: postgres:13
+    env_file:
+      - .env
+    ports:
+      - 5433:5432
+    networks:
+      - my-network
+    volumes:
+      - db-data:/var/lib/postgresql/data
+
+  # BACKEND
+  backend:
+    container_name: backend
+    depends_on:
+      - db
+    build:
+      context: .
+      target: backend
+    environment:
+      PATH: /exnaton_challenge/.venv/bin:$PATH
+      DATABASE_URL: postgres://$POSTGRES_USER:$POSTGRES_PASSWORD@db/$POSTGRES_DB
+      PYTHONPATH: /exnaton_challenge
+      POSTGRES_DB: api
+      POSTGRES_USER: username
+      POSTGRES_PASSWORD: password
+    entrypoint: [ ]
+    command: >
+      sh -c "python3 main.py"
+    ports:
+      - 5001:5001
+    volumes:
+      - ./backend:/exnaton_challenge/backend
+      - /exnaton_challenge/.venv
+      - ./migrations:/migrations
+    networks:
+      - my-network
+
+  frontend:
+    container_name: frontend
+    depends_on:
+      - backend
+    build:
+      context: .
+      target: frontend
+      args:
+        ENV: development
+    environment:
+      NODE_ENV: development
+    entrypoint: [ ]
+    command: npm run dev:host
+    ports:
+      - 5173:5173
+    volumes:
+      - ./frontend:/exnaton_challenge/frontend
+      - /exnaton_challenge/frontend/node_modules
+      - /exnaton_challenge/frontend/dist
+    networks:
+      - my-network
+
+networks:
+  my-network:
+    name: my-network
+
+volumes:
+  db-data:
